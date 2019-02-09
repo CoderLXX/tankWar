@@ -2,8 +2,7 @@ import com.sun.javafx.application.PlatformImpl;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 
 class TankWar extends JComponent {
     private static final int WIDTH = 800, HEIGHT = 600;
@@ -13,32 +12,18 @@ class TankWar extends JComponent {
     private int x = WIDTH / 2, y = HEIGHT / 2;
     private int my = HEIGHT / 2 + 50;
 
-    private TankWar() {
-        this.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                int key = e.getKeyCode();
-                if (key == KeyEvent.VK_CONTROL) {
-                    Tools.playAudio("shoot.wav");
-                    my += 10;
-                } else if (key == KeyEvent.VK_A) {
-                    Tools.playAudio(Tools.nextBoolean() ? "supershoot.wav" : "supershoot.aiff");
-                    my += 10;
-                } else if (key == KeyEvent.VK_LEFT) {
-                    x -= 5;
-                } else if (key == KeyEvent.VK_UP) {
-                    y -= 5;
-                } else if (key == KeyEvent.VK_RIGHT) {
-                    x += 5;
-                } else if (key == KeyEvent.VK_DOWN) {
-                    y += 5;
-                }
+    private Tank tank;
 
-                if (my >= HEIGHT) {
-                    my = Tools.nextInt(HEIGHT);
-                }
-            }
-        });
+
+    private TankWar() {
+        this.initTankWar();
+    }
+
+    private void initTankWar() {
+        this.tank = new Tank(WIDTH / 2, 50);
+        this.tank.initDirection(Direction.Down);
+
+        this.addKeyListener(this.tank);
     }
 
     @Override
@@ -62,10 +47,7 @@ class TankWar extends JComponent {
         g.drawString("Enemies Left: " + Tools.nextInt(10), 10, 110);
         g.drawString("Enemies Killed: " + Tools.nextInt(10), 10, 130);
 
-        g.setColor(Color.RED);
-        g.fillRect(x, y - 10, 35, 10);
-        g.drawImage(new ImageIcon(this.getClass().getResource("images/tankD.gif")).getImage(),
-            x, y, null);
+        this.tank.draw(g);
 
         int dist = (WIDTH - 120) / 9;
         for (int i = 0; i < 10; i++) {
