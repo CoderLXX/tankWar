@@ -6,8 +6,7 @@ enum Direction {
     Right("R"),
     LeftDown("LD"),
     Down("D"),
-    RightDown("RD"),
-    Stop("S");
+    RightDown("RD");
 
     public String abbrev;
 

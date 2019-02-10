@@ -9,13 +9,15 @@ class Tank extends GameObject implements KeyListener {
 
     private static final int XSPEED = 5, YSPEED = 5;
 
+    private int WIDTH = 35, HEIGHT= 35;
+
     private static boolean isEnemy = false;
 
     private static int lifeValue = 100;
 
-    private static Direction direction = Direction.Stop;
+    private static Direction direction;
 
-    private static Direction gunDir = Direction.Stop;
+    private static Direction pDirection = Direction.Down;
 
     private static Image[] tankImages = null;
     private static Map<String, Image> tkImgs = new HashMap<String, Image>();
@@ -59,8 +61,16 @@ class Tank extends GameObject implements KeyListener {
         this.isEnemy = isEnemy;
     }
 
+    @Override
+    public void setLive(boolean live) {
+        super.setLive(live);
+    }
+
     public void initDirection(Direction dir) {
         direction = dir;
+        pDirection = dir;
+//        WIDTH = tankImages[0].getWidth(null);
+//        WIDTH = tankImages[0].getHeight(null);
     }
 
     @Override
@@ -69,10 +79,13 @@ class Tank extends GameObject implements KeyListener {
             return;
         }
 
-        Image tankImg = tkImgs.get(gunDir.abbrev);
-        g.drawImage(tankImg, x, y, null);
-        move();
 
+        Image tankImg = tkImgs.get(pDirection.abbrev);
+        g.drawImage(tankImg, x, y, null);
+        if (direction != null) {
+            pDirection = direction;
+            move();
+        }
 
 
     }
@@ -86,7 +99,8 @@ class Tank extends GameObject implements KeyListener {
         else if(!kL && !kU && kR && kD) direction =Direction.RightDown;
         else if(!kL && !kU && !kR && kD) direction =Direction.Down;
         else if(kL && !kU && !kR && kD) direction =Direction.LeftDown;
-        else if(!kL && !kU && !kR && !kD) direction =Direction.Stop;
+        else if(!kL && !kU && !kR && !kD) direction = null;
+
     }
 
     private void move() {
@@ -119,18 +133,17 @@ class Tank extends GameObject implements KeyListener {
                 x -= XSPEED;
                 y += YSPEED;
                 break;
-            case Stop:
-                break;
 
-        }
-        if (direction != Direction.Stop) {
-            gunDir.abbrev = direction.abbrev;
-            System.out.println(gunDir.abbrev);
         }
 
     }
 
     private void fire() {
+        if (!this.isLive()) return;
+        int mx = x + WIDTH / 2 - Missile.WIDTH / 2;
+        int my = y + HEIGHT / 2 - Missile.HEIGHT / 2;
+        Missile m = new Missile(mx, my, pDirection, false);
+        TankWar.getInstance().addMissile(m);
 
     }
 
@@ -171,7 +184,7 @@ class Tank extends GameObject implements KeyListener {
     public void keyReleased(KeyEvent e) {
         int key = e.getKeyCode();
         switch (key) {
-            case KeyEvent.VK_1:
+            case KeyEvent.VK_R:
                 fire();
                 break;
             case KeyEvent.VK_LEFT:

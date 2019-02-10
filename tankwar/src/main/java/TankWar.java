@@ -3,9 +3,10 @@ import com.sun.javafx.application.PlatformImpl;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyListener;
+import java.util.ArrayList;
 
 class TankWar extends JComponent {
-    private static final int WIDTH = 800, HEIGHT = 600;
+    static final int WIDTH = 800, HEIGHT = 600;
 
     private static final int REPAINT_INTERVAL = 50;
 
@@ -14,16 +15,25 @@ class TankWar extends JComponent {
 
     private Tank tank;
 
+    private ArrayList<Missile> missiles;
+
 
     private TankWar() {
         this.initTankWar();
     }
 
     private void initTankWar() {
+        missiles = new ArrayList<>();
+
         this.tank = new Tank(WIDTH / 2, 50);
         this.tank.initDirection(Direction.Down);
 
         this.addKeyListener(this.tank);
+    }
+
+    public void addMissile(Missile m) {
+        this.missiles.add(m);
+        System.out.println("addMissile======="+m);
     }
 
     @Override
@@ -59,6 +69,17 @@ class TankWar extends JComponent {
 
         g.drawImage(new ImageIcon(this.getClass().getResource("images/10.gif")).getImage(),
             WIDTH / 2, 100, null);
+
+
+        for (Missile m: this.missiles) {
+            m.draw(g);
+            System.out.println("for loop~~~~~~");
+        }
+
+        if (missiles.size() == 0) {
+            System.out.println("missiles=======" + missiles);
+        }
+
     }
 
     private void start() {
@@ -77,6 +98,16 @@ class TankWar extends JComponent {
         }.execute();
     }
 
+    private static TankWar INSTANCE;
+
+    static TankWar getInstance() {
+        if (INSTANCE == null) {
+            INSTANCE = new TankWar();
+        }
+        return INSTANCE;
+    }
+
+
     public static void main(String[] args) {
         PlatformImpl.startup(() -> {});
         Tools.setTheme();
@@ -87,7 +118,7 @@ class TankWar extends JComponent {
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         frame.setResizable(false);
 
-        TankWar tankWar = new TankWar();
+        TankWar tankWar = TankWar.getInstance();
         frame.add(tankWar);
         // KeyListeners need to be on the focused component to work
         tankWar.setFocusable(true);
