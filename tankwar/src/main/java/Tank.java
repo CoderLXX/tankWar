@@ -3,6 +3,7 @@ import javax.swing.*;
 import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 class Tank extends GameObject implements KeyListener {
@@ -11,13 +12,15 @@ class Tank extends GameObject implements KeyListener {
 
     private int WIDTH = 35, HEIGHT= 35;
 
-    private static boolean isEnemy = false;
+    private int oldX, oldY;
+
+    private final boolean enemy;
 
     private static int lifeValue = 100;
 
-    private static Direction direction;
+    private Direction direction;
 
-    private static Direction pDirection = Direction.Down;
+    private Direction pDirection = Direction.Down;
 
     private static Image[] tankImages = null;
     private static Map<String, Image> tkImgs = new HashMap<String, Image>();
@@ -55,10 +58,16 @@ class Tank extends GameObject implements KeyListener {
         this(x, y, false);
     }
 
-    Tank(int x, int y, boolean isEnemy) {
+    Tank(int x, int y, boolean enemy) {
         this.x = x;
         this.y = y;
-        this.isEnemy = isEnemy;
+        this.enemy = enemy;
+        this.oldX = x;
+        this.oldY = y;
+    }
+
+    boolean isEnemy() {
+        return this.enemy;
     }
 
     @Override
@@ -69,8 +78,9 @@ class Tank extends GameObject implements KeyListener {
     public void initDirection(Direction dir) {
         direction = dir;
         pDirection = dir;
-//        WIDTH = tankImages[0].getWidth(null);
-//        WIDTH = tankImages[0].getHeight(null);
+        Image image = tkImgs.get(pDirection.abbrev);
+        WIDTH = image.getWidth(null);
+        HEIGHT = image.getHeight(null);
     }
 
     @Override
@@ -78,9 +88,12 @@ class Tank extends GameObject implements KeyListener {
         if (!isLive()) {
             return;
         }
-
-
         Image tankImg = tkImgs.get(pDirection.abbrev);
+
+        WIDTH = tankImg.getWidth(null);
+        HEIGHT = tankImg.getHeight(null);
+
+
         g.drawImage(tankImg, x, y, null);
         if (direction != null) {
             pDirection = direction;
@@ -104,6 +117,8 @@ class Tank extends GameObject implements KeyListener {
     }
 
     private void move() {
+        oldX = x;
+        oldY = y;
         switch (direction) {
             case Left:
                 x -= XSPEED;
@@ -136,18 +151,41 @@ class Tank extends GameObject implements KeyListener {
 
         }
 
+        if (x < 0) x = 0;
+        else if (y < 0) y = 0;
+        else if (x > TankWar.WIDTH - WIDTH) x = TankWar.WIDTH - WIDTH;
+        else if (y > TankWar.HEIGHT - HEIGHT - 25) y = TankWar.HEIGHT - HEIGHT - 25;
+
     }
 
     private void fire() {
         if (!this.isLive()) return;
         int mx = x + WIDTH / 2 - Missile.WIDTH / 2;
         int my = y + HEIGHT / 2 - Missile.HEIGHT / 2;
-        Missile m = new Missile(mx, my, pDirection, false);
+        Missile m = new Missile(mx, my, pDirection, enemy);
         TankWar.getInstance().addMissile(m);
-
     }
 
 
+    private void stay() {
+        x = oldX;
+        y = oldY;
+    }
+
+    private int step = Tools.nextInt(12) + 3;
+
+    void directionRandom() {
+        Direction[] dirs = Direction.values();
+        if (step == 0) {
+            step = Tools.nextInt(12) + 3;
+            int rn = Tools.nextInt(dirs.length);
+            pDirection = direction = dirs[rn];
+            if (Tools.nextBoolean()) {
+                this.fire();
+            }
+        }
+        step --;
+    }
 
     @Override
     public void keyTyped(KeyEvent e) {
@@ -206,6 +244,32 @@ class Tank extends GameObject implements KeyListener {
 
     @Override
     Rectangle getRectangle() {
-        return null;
+        return new Rectangle(x, y, WIDTH, HEIGHT);
     }
+
+    boolean collidesWithWalls(List<Wall> walls) {
+        for (Wall w: walls) {
+            if (this.isLive() && this.getRectangle().intersects(w.getRectangle())) {
+                stay();
+                return true;
+            }
+        }
+        return true;
+    }
+
+    public void collidesWithTanks(List<Tank> tanks) {
+        for (Tank t: tanks) {
+            if (this == t) continue;
+
+            if (this.isLive() && t.isLive() && this.getRectangle().intersects(t.getRectangle())) {
+                if (this.enemy) {
+                    this.stay();
+                }
+                t.stay();
+                return;
+            }
+        }
+    }
+
+
 }

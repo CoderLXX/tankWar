@@ -2,8 +2,11 @@ import com.sun.javafx.application.PlatformImpl;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.KeyListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyAdapter;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 class TankWar extends JComponent {
     static final int WIDTH = 800, HEIGHT = 600;
@@ -16,24 +19,75 @@ class TankWar extends JComponent {
     private Tank tank;
 
     private ArrayList<Missile> missiles;
+    private List<Explode> explodes;
+    private final List<Wall> walls;
+    private List<Tank> enemyTanks;
+
 
 
     private TankWar() {
+        this.walls = Arrays.asList(
+                new Wall(250, 100, 300, 28),
+                new Wall(100, 200, 28, 280),
+                new Wall(680, 200, 28, 280)
+        );
+
         this.initTankWar();
     }
 
     private void initTankWar() {
-        missiles = new ArrayList<>();
+        this.missiles = new ArrayList<>();
+        this.explodes = new ArrayList<>();
+        this.enemyTanks = new ArrayList<>();
+        this.initEnemyTanks();
 
-        this.tank = new Tank(WIDTH / 2, 50);
+        this.tank = new Tank(WIDTH / 2, 50, false);
         this.tank.initDirection(Direction.Down);
 
-        this.addKeyListener(this.tank);
+
     }
 
     public void addMissile(Missile m) {
         this.missiles.add(m);
-        System.out.println("addMissile======="+m);
+    }
+
+    void addExplode(Explode explode) { this.explodes.add(explode);}
+
+    public void removeMissile(Missile m) {
+        this.missiles.remove(m);
+    }
+
+    private void initEnemyTanks() {
+        int dist = (WIDTH - 120) / 9;
+        for (int i = 0; i < 2; i++) {
+            Tank tank = new Tank(50 + dist * i, HEIGHT / 2 + 100, true);
+            tank.initDirection(Direction.Up);
+            this.enemyTanks.add(tank);
+        }
+    }
+
+    private void triggerEvent() {
+        for (int i = 0; i < missiles.size(); i++) {
+            Missile m = missiles.get(i);
+            m.hitTanks(enemyTanks);
+            m.hitTank(tank);
+            m.hitWalls(walls);
+        }
+
+        for (int i = 0; i < enemyTanks.size(); i++) {
+            Tank enemyT = enemyTanks.get(i);
+            if (!enemyT.isLive()) {
+                enemyTanks.remove(i);
+                continue;
+            }
+            enemyT.collidesWithWalls(walls);
+            enemyT.collidesWithTanks(enemyTanks);
+            enemyT.directionRandom();
+        }
+
+        this.tank.collidesWithTanks(enemyTanks);
+
+        explodes.removeIf(e -> !e.isLive());
     }
 
     @Override
@@ -41,43 +95,41 @@ class TankWar extends JComponent {
         g.setColor(Color.BLACK);
         g.fillRect(0, 0, WIDTH, HEIGHT);
 
-        g.setColor(Color.DARK_GRAY);
-        g.fillRect(250, 100, 300, 20);
-        g.fillRect(100, 200, 20, 150);
-        g.fillRect(680, 200, 20, 150);
+        for (Wall w: walls) {
+            w.draw(g);
+        }
+
 
         g.setColor(Color.MAGENTA);
         g.fillRect(360, 270, 15, 15);
 
         g.setColor(Color.WHITE);
         g.setFont(new Font("Default", Font.BOLD, 14));
-        g.drawString("Missiles: " + Tools.nextInt(10), 10, 50);
-        g.drawString("Explodes: " + Tools.nextInt(10), 10, 70);
-        g.drawString("Our Tank HP: " + Tools.nextInt(10), 10, 90);
-        g.drawString("Enemies Left: " + Tools.nextInt(10), 10, 110);
-        g.drawString("Enemies Killed: " + Tools.nextInt(10), 10, 130);
+        g.drawString("Missiles: " + missiles.size(), 10, 50);
+        g.drawString("Explodes: " + explodes.size(), 10, 70);
+        g.drawString("Our Tank HP: " + 10, 10, 90);
+        g.drawString("Enemies Left: " + 10, 10, 110);
+        g.drawString("Enemies Killed: " + 10, 10, 130);
 
         this.tank.draw(g);
+        tank.collidesWithWalls(walls);
 
-        int dist = (WIDTH - 120) / 9;
-        for (int i = 0; i < 10; i++) {
-            g.drawImage(new ImageIcon(this.getClass().getResource("images/tankU.gif")).getImage(),
-                50 + dist * i, HEIGHT / 2 + 100, null);
+
+
+        for (Tank tank: enemyTanks) {
+            tank.draw(g);
         }
-        g.drawImage(new ImageIcon(this.getClass().getResource("images/missileD.gif")).getImage(),
-            WIDTH / 2, my, null);
 
-        g.drawImage(new ImageIcon(this.getClass().getResource("images/10.gif")).getImage(),
-            WIDTH / 2, 100, null);
-
-
-        for (Missile m: this.missiles) {
+        for (int i = 0; i < missiles.size(); i++) {
+            Missile m = missiles.get(i);
+            m.hitTank(tank);
+            m.hitWalls(walls);
             m.draw(g);
-            System.out.println("for loop~~~~~~");
         }
 
-        if (missiles.size() == 0) {
-            System.out.println("missiles=======" + missiles);
+        for (int i = 0; i < explodes.size(); i++) {
+            Explode explode = explodes.get(i);
+            explode.draw(g);
         }
 
     }
@@ -89,6 +141,7 @@ class TankWar extends JComponent {
                 while (true) {
                     try {
                         repaint();
+                        triggerEvent();
                         Tools.sleepSilently(REPAINT_INTERVAL);
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -120,8 +173,20 @@ class TankWar extends JComponent {
 
         TankWar tankWar = TankWar.getInstance();
         frame.add(tankWar);
-        // KeyListeners need to be on the focused component to work
-        tankWar.setFocusable(true);
+
+
+        frame.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                tankWar.tank.keyPressed(e);
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                tankWar.tank.keyReleased(e);
+            }
+        });
+
         frame.setVisible(true);
         tankWar.start();
     }

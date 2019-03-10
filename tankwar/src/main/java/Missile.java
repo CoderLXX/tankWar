@@ -1,5 +1,6 @@
 import java.awt.*;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 class Missile extends GameObject {
@@ -59,6 +60,7 @@ class Missile extends GameObject {
     @Override
     void draw(Graphics g) {
         if (!isLive()) {
+            TankWar.getInstance().removeMissile(this);
             return;
         }
         g.drawImage(mImgs.get(dir.abbrev), x, y, null);
@@ -104,6 +106,38 @@ class Missile extends GameObject {
 
     @Override
     Rectangle getRectangle() {
-        return null;
+        return new Rectangle(x, y, WIDTH, HEIGHT);
+    }
+
+    boolean hitTank(Tank tank) {
+        if (this.isLive() && this.getRectangle().intersects(tank.getRectangle())
+         && tank.isLive() && this.isEnemy != tank.isEnemy()) {
+            this.setLive(false);
+            tank.setLive(false);
+
+            Explode e = new Explode(x, y);
+            TankWar.getInstance().addExplode(e);
+            return true;
+        }
+        return false;
+    }
+
+    void hitTanks(List<Tank> tanks) {
+        for (int i = 0; i < tanks.size(); i++) {
+            if (hitTank(tanks.get(i))) {
+                break;
+            }
+        }
+    }
+
+    void hitWalls(List<Wall> walls) {
+        for (Wall w: walls) {
+            boolean isHit = this.isLive() && this.getRectangle().intersects(w.getRectangle());
+            if (isHit) {
+                this.setLive(false);
+                break;
+            }
+        }
+
     }
 }
