@@ -113,10 +113,17 @@ class Missile extends GameObject {
         if (this.isLive() && this.getRectangle().intersects(tank.getRectangle())
          && tank.isLive() && this.isEnemy != tank.isEnemy()) {
             this.setLive(false);
-            tank.setLive(false);
+            if (!tank.isEnemy()) {
+                tank.setLife(tank.getLife() - 10);
+                if (tank.getLife() <= 0) {
+                    tank.setLive(false);
+                }
+            } else {
+                tank.setLive(false);
+                Explode e = new Explode(x, y);
+                TankWar.getInstance().addExplode(e);
+            }
 
-            Explode e = new Explode(x, y);
-            TankWar.getInstance().addExplode(e);
             return true;
         }
         return false;

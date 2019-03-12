@@ -17,11 +17,13 @@ class TankWar extends JComponent {
     private int my = HEIGHT / 2 + 50;
 
     private Tank tank;
+    private Blood blood;
 
     private ArrayList<Missile> missiles;
     private List<Explode> explodes;
     private final List<Wall> walls;
     private List<Tank> enemyTanks;
+    private int enemiesKilled;
 
 
 
@@ -44,7 +46,17 @@ class TankWar extends JComponent {
         this.tank = new Tank(WIDTH / 2, 50, false);
         this.tank.initDirection(Direction.Down);
 
+        this.blood = new Blood();
 
+    }
+
+    private void initEnemyTanks() {
+        int dist = (WIDTH - 120) / 9;
+        for (int i = 0; i < 12; i++) {
+            Tank tank = new Tank(50 + dist * i, HEIGHT / 2 + 100, true);
+            tank.initDirection(Direction.Up);
+            this.enemyTanks.add(tank);
+        }
     }
 
     public void addMissile(Missile m) {
@@ -57,18 +69,24 @@ class TankWar extends JComponent {
         this.missiles.remove(m);
     }
 
-    private void initEnemyTanks() {
-        int dist = (WIDTH - 120) / 9;
-        for (int i = 0; i < 2; i++) {
-            Tank tank = new Tank(50 + dist * i, HEIGHT / 2 + 100, true);
-            tank.initDirection(Direction.Up);
-            this.enemyTanks.add(tank);
-        }
+    void reStart() {
+        this.enemiesKilled = 0;
+        this.initTankWar();
     }
 
     private void triggerEvent() {
+        if (!this.tank.isLive()) return;
+
+        if (enemyTanks.isEmpty()) {
+            this.initEnemyTanks();
+        }
+
         for (int i = 0; i < missiles.size(); i++) {
             Missile m = missiles.get(i);
+            if (!m.isLive()) {
+                missiles.remove(i);
+                continue;
+            }
             m.hitTanks(enemyTanks);
             m.hitTank(tank);
             m.hitWalls(walls);
@@ -78,6 +96,7 @@ class TankWar extends JComponent {
             Tank enemyT = enemyTanks.get(i);
             if (!enemyT.isLive()) {
                 enemyTanks.remove(i);
+                enemiesKilled++;
                 continue;
             }
             enemyT.collidesWithWalls(walls);
@@ -87,49 +106,69 @@ class TankWar extends JComponent {
 
         this.tank.collidesWithTanks(enemyTanks);
 
+        if (tank.isDying()) {
+            this.blood.setLive(Tools.nextInt(4) < 3);
+        }
+
+        if (tank.collidesWithBlood(blood)) {
+            blood.setLive(false);
+        }
+
+
         explodes.removeIf(e -> !e.isLive());
     }
 
     @Override
     protected void paintComponent(Graphics g) {
-        g.setColor(Color.BLACK);
-        g.fillRect(0, 0, WIDTH, HEIGHT);
+        if (!tank.isLive()) {
+            g.setColor(Color.BLACK);
+            g.fillRect(0, 0, WIDTH, HEIGHT);
 
-        for (Wall w: walls) {
-            w.draw(g);
-        }
+            g.setColor(Color.RED);
+            g.setFont(new Font("Default", Font.BOLD, 100));
+            g.drawString("GAME OVER", 80, HEIGHT / 2 - 40);
+
+            g.setColor(Color.white);
+            g.setFont(new Font("Default", Font.BOLD, 50));
+            g.drawString("Press T to Start", 180, HEIGHT / 2 + 60);
+        } else {
+            g.setColor(Color.BLACK);
+            g.fillRect(0, 0, WIDTH, HEIGHT);
+
+            for (Wall w: walls) {
+                w.draw(g);
+            }
+
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Default", Font.BOLD, 14));
+            g.drawString("Missiles: " + missiles.size(), 10, 50);
+            g.drawString("Explodes: " + explodes.size(), 10, 70);
+            g.drawString("Our Tank HP: " + tank.getLife(), 10, 90);
+            g.drawString("Enemies Left: " + enemyTanks.size(), 10, 110);
+            g.drawString("Enemies Killed: " + enemiesKilled, 10, 130);
+
+            this.tank.draw(g);
+            tank.collidesWithWalls(walls);
 
 
-        g.setColor(Color.MAGENTA);
-        g.fillRect(360, 270, 15, 15);
+            for (int i = 0; i < enemyTanks.size(); i++) {
+                Tank t = enemyTanks.get(i);
+                t.draw(g);
+            }
 
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("Default", Font.BOLD, 14));
-        g.drawString("Missiles: " + missiles.size(), 10, 50);
-        g.drawString("Explodes: " + explodes.size(), 10, 70);
-        g.drawString("Our Tank HP: " + 10, 10, 90);
-        g.drawString("Enemies Left: " + 10, 10, 110);
-        g.drawString("Enemies Killed: " + 10, 10, 130);
+            for (int i = 0; i < missiles.size(); i++) {
+                Missile m = missiles.get(i);
+                m.hitTank(tank);
+                m.hitWalls(walls);
+                m.draw(g);
+            }
 
-        this.tank.draw(g);
-        tank.collidesWithWalls(walls);
+            for (int i = 0; i < explodes.size(); i++) {
+                Explode explode = explodes.get(i);
+                explode.draw(g);
+            }
 
-
-
-        for (Tank tank: enemyTanks) {
-            tank.draw(g);
-        }
-
-        for (int i = 0; i < missiles.size(); i++) {
-            Missile m = missiles.get(i);
-            m.hitTank(tank);
-            m.hitWalls(walls);
-            m.draw(g);
-        }
-
-        for (int i = 0; i < explodes.size(); i++) {
-            Explode explode = explodes.get(i);
-            explode.draw(g);
+            this.blood.draw(g);
         }
 
     }

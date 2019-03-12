@@ -16,7 +16,12 @@ class Tank extends GameObject implements KeyListener {
 
     private final boolean enemy;
 
-    private static int lifeValue = 100;
+    private static int LIFEVALUE = 100;
+    private static final int LOW_LIFEVALUE = 20;
+
+    private BloodBar bb = new BloodBar();
+
+    private int life = LIFEVALUE;
 
     private Direction direction;
 
@@ -70,9 +75,16 @@ class Tank extends GameObject implements KeyListener {
         return this.enemy;
     }
 
-    @Override
-    public void setLive(boolean live) {
-        super.setLive(live);
+    boolean isDying() {
+        return this.life <= LOW_LIFEVALUE;
+    }
+
+    public void setLife(int life) {
+        this.life = life;
+    }
+
+    public int getLife() {
+        return life;
     }
 
     public void initDirection(Direction dir) {
@@ -81,26 +93,6 @@ class Tank extends GameObject implements KeyListener {
         Image image = tkImgs.get(pDirection.abbrev);
         WIDTH = image.getWidth(null);
         HEIGHT = image.getHeight(null);
-    }
-
-    @Override
-    public void draw(Graphics g) {
-        if (!isLive()) {
-            return;
-        }
-        Image tankImg = tkImgs.get(pDirection.abbrev);
-
-        WIDTH = tankImg.getWidth(null);
-        HEIGHT = tankImg.getHeight(null);
-
-
-        g.drawImage(tankImg, x, y, null);
-        if (direction != null) {
-            pDirection = direction;
-            move();
-        }
-
-
     }
 
     private void changeTankDirection() {
@@ -159,11 +151,21 @@ class Tank extends GameObject implements KeyListener {
     }
 
     private void fire() {
+        this.fire(pDirection);
+    }
+
+    private void fire(Direction dir) {
         if (!this.isLive()) return;
         int mx = x + WIDTH / 2 - Missile.WIDTH / 2;
         int my = y + HEIGHT / 2 - Missile.HEIGHT / 2;
-        Missile m = new Missile(mx, my, pDirection, enemy);
+        Missile m = new Missile(mx, my, dir, enemy);
         TankWar.getInstance().addMissile(m);
+    }
+
+    private void superFire() {
+        for (Direction dir: Direction.values()) {
+            this.fire(dir);
+        }
     }
 
 
@@ -185,66 +187,6 @@ class Tank extends GameObject implements KeyListener {
             }
         }
         step --;
-    }
-
-    @Override
-    public void keyTyped(KeyEvent e) {
-        // -> Ignore
-    }
-
-    @Override
-    public void keyPressed(KeyEvent e) {
-        int key = e.getKeyCode();
-        switch (key) {
-            case KeyEvent.VK_E:
-                if (!isLive()) {
-                    setLive(true);
-                }
-                break;
-            case KeyEvent.VK_LEFT:
-                kL = true;
-                break;
-            case KeyEvent.VK_UP:
-                kU = true;
-                break;
-            case KeyEvent.VK_RIGHT:
-                kR = true;
-                break;
-            case KeyEvent.VK_DOWN:
-                kD = true;
-                break;
-        }
-        changeTankDirection();
-
-    }
-
-    @Override
-    public void keyReleased(KeyEvent e) {
-        int key = e.getKeyCode();
-        switch (key) {
-            case KeyEvent.VK_R:
-                fire();
-                break;
-            case KeyEvent.VK_LEFT:
-                kL = false;
-                break;
-            case KeyEvent.VK_UP:
-                kU = false;
-                break;
-            case KeyEvent.VK_RIGHT:
-                kR = false;
-                break;
-            case KeyEvent.VK_DOWN:
-                kD = false;
-                break;
-        }
-        changeTankDirection();
-
-    }
-
-    @Override
-    Rectangle getRectangle() {
-        return new Rectangle(x, y, WIDTH, HEIGHT);
     }
 
     boolean collidesWithWalls(List<Wall> walls) {
@@ -271,5 +213,119 @@ class Tank extends GameObject implements KeyListener {
         }
     }
 
+    boolean collidesWithBlood(Blood blood) {
+        if (this.isLive() && blood.isLive() && this.getRectangle().intersects(blood.getRectangle())) {
+            this.setLife(LIFEVALUE);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public void setLive(boolean live) {
+        super.setLive(live);
+    }
+
+    @Override
+    public void draw(Graphics g) {
+        if (!isLive()) {
+            return;
+        }
+
+        if (!isEnemy()) bb.draw(g);
+
+        Image tankImg = tkImgs.get(pDirection.abbrev);
+
+        WIDTH = tankImg.getWidth(null);
+        HEIGHT = tankImg.getHeight(null);
+
+
+        g.drawImage(tankImg, x, y, null);
+        if (direction != null) {
+            pDirection = direction;
+            move();
+        }
+
+
+    }
+
+    @Override
+    public void keyTyped(KeyEvent e) {
+        // -> Ignore
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        int key = e.getKeyCode();
+        switch (key) {
+            case KeyEvent.VK_T:
+                if (!isLive()) {
+                    setLive(true);
+                    this.life = LIFEVALUE;
+                    TankWar.getInstance().reStart();
+                }
+                break;
+            case KeyEvent.VK_LEFT:
+                kL = true;
+                break;
+            case KeyEvent.VK_UP:
+                kU = true;
+                break;
+            case KeyEvent.VK_RIGHT:
+                kR = true;
+                break;
+            case KeyEvent.VK_DOWN:
+                kD = true;
+                break;
+        }
+        changeTankDirection();
+
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e) {
+        int key = e.getKeyCode();
+        switch (key) {
+            case KeyEvent.VK_R:
+                fire();
+                break;
+            case KeyEvent.VK_A:
+                superFire();
+                break;
+            case KeyEvent.VK_LEFT:
+                kL = false;
+                break;
+            case KeyEvent.VK_UP:
+                kU = false;
+                break;
+            case KeyEvent.VK_RIGHT:
+                kR = false;
+                break;
+            case KeyEvent.VK_DOWN:
+                kD = false;
+                break;
+        }
+        changeTankDirection();
+
+    }
+
+    @Override
+    Rectangle getRectangle() {
+        return new Rectangle(x, y, WIDTH, HEIGHT);
+    }
+
+    public class BloodBar {
+        public void draw(Graphics g) {
+            Color c = g.getColor();
+            g.setColor(Color.RED);
+            g.drawRect(x, y - 10, WIDTH, 10);
+            int w = WIDTH * life/LIFEVALUE ;
+            g.fillRect(x, y - 10, w, 10);
+            g.setColor(c);
+        }
+    }
+
 
 }
+
+
